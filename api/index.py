@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 import google.generativeai as genai
 import requests
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 # IDRISIUM Corp — Offline-First, Privacy-Centric, High-Performance
@@ -113,13 +113,22 @@ def handle_message_event(event: Dict[str, Any], page_id: Optional[str]) -> None:
 
 @app.get("/webhook")
 async def verify_webhook(
-    hub_mode: str | None = None,
-    hub_challenge: int | None = None,
-    hub_verify_token: str | None = None,
+    hub_mode: str | None = Query(None, alias="hub.mode"),
+    hub_challenge: int | None = Query(None, alias="hub.challenge"),
+    hub_verify_token: str | None = Query(None, alias="hub.verify_token"),
 ) -> PlainTextResponse:
     if hub_mode == "subscribe" and hub_verify_token == FACEBOOK_VERIFY_TOKEN:
         return PlainTextResponse(str(hub_challenge or ""))
     raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@app.get("/api/webhook", include_in_schema=False)
+async def verify_webhook_alias(
+    hub_mode: str | None = Query(None, alias="hub.mode"),
+    hub_challenge: int | None = Query(None, alias="hub.challenge"),
+    hub_verify_token: str | None = Query(None, alias="hub.verify_token"),
+) -> PlainTextResponse:
+    return await verify_webhook(hub_mode, hub_challenge, hub_verify_token)
 
 
 @app.post("/webhook")
@@ -137,6 +146,16 @@ async def webhook(request: Request) -> JSONResponse:
             handle_message_event(event, page_id)
 
     return JSONResponse({"status": "ok"})
+
+
+@app.post("/api/webhook", include_in_schema=False)
+async def webhook_alias(request: Request) -> JSONResponse:
+    return await webhook(request)
+
+
+@app.get("/", include_in_schema=False)
+async def health() -> JSONResponse:
+    return JSONResponse({"status": "alive"})
 
 
 if __name__ == "__main__":
