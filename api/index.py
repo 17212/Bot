@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 FACEBOOK_ACCESS_TOKEN = os.getenv(
     "FACEBOOK_ACCESS_TOKEN",
-    "EAAKJ7U4lTB8BQMClnnSSpzFkr4J7oBbDOq7DPKR2zaH0ZCEBDXOm6SPb1Y8qXZBZAmeQZBBd8OZCjgQ5OLZA6qfI68qu18Jh4XM3QsD7eGhu3DcYu3lX2wZCVxreGVui6QPNKSpyV5DuQ7Wg8k4FkJz5hvqZBi2NzeBtn7YbR9Xe825qOUW1NU0KkN2zZAc3rDQGw",
+    "EAAKJ7U4lTB8BQGll8VwsZBZCeZBpzSqaeP4JbOVLrFhcgJQEFm3ox72Fx2N5PFlOrZBsPFtdIKLxqhNveZBsDIzBMfEIjVg9p1C0TvehRfKIgoDWd8jSLcjJ1mcQrLK6ieIigGus4KEHs5mNY76FzgytIvetbZAZAmlJLjGYD6SkbqCd1ZButRTa8yZAl3E8Q",
 )
 FACEBOOK_VERIFY_TOKEN = os.getenv("FACEBOOK_VERIFY_TOKEN", "idrisium_not_human_2025_secret")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCA859z2Xrpl1Fp_N9NFzFrURMh0EIAZtc")
@@ -112,6 +112,37 @@ def handle_message_event(event: Dict[str, Any], page_id: Optional[str]) -> None:
     send_facebook_message(sender_id, reply)
 
 
+def handle_feed_change(change: Dict[str, Any], page_id: Optional[str]) -> None:
+    value = change.get("value") or {}
+    if value.get("item") != "comment" or value.get("verb") not in {"add", "edited"}:
+        return
+
+    comment_id = value.get("comment_id")
+    from_id = value.get("from", {}).get("id")
+    message_text = (value.get("message") or "").strip()
+
+    if not comment_id or not message_text:
+        logger.info("Feed change missing comment_id or message: %s", value)
+        return
+
+    if page_id and from_id == page_id:
+        return
+
+    reply = generate_reply(message_text)
+    payload = {"message": reply}
+    try:
+        resp = requests.post(
+            f"https://graph.facebook.com/v19.0/{comment_id}/comments",
+            params={"access_token": FACEBOOK_ACCESS_TOKEN},
+            json=payload,
+            timeout=HTTP_TIMEOUT,
+        )
+        if resp.status_code >= 400:
+            logger.warning("FB comment reply failed %s %s", resp.status_code, resp.text)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("FB comment reply error: %s", exc)
+
+
 @app.get("/webhook")
 async def verify_webhook(
     hub_mode: str | None = Query(None, alias="hub.mode"),
@@ -145,6 +176,11 @@ async def webhook(request: Request) -> JSONResponse:
         messaging_events = entry.get("messaging", [])
         for event in messaging_events:
             handle_message_event(event, page_id)
+
+        changes = entry.get("changes", [])
+        for change in changes:
+            if change.get("field") == "feed":
+                handle_feed_change(change, page_id)
 
     return JSONResponse({"status": "ok"})
 
