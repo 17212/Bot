@@ -1,4 +1,5 @@
-import { Sparkles, Zap, Shield, Clock3, BarChart3 } from "lucide-react";
+import { Sparkles, Zap, Shield, Clock3, BarChart3, Activity, MessageCircle, FileText } from "lucide-react";
+import StatWidget from "@/components/StatWidget";
 
 const features = [
   {
@@ -29,6 +30,13 @@ const features = [
 ];
 
 function Home() {
+  const kpis = [
+    { label: "Published Posts", value: "342", icon: <FileText className="text-primary" size={16} /> },
+    { label: "Comments Replied", value: "9,842", icon: <MessageCircle className="text-primary" size={16} /> },
+    { label: "Messenger Threads", value: "1,324", icon: <Activity className="text-primary" size={16} /> },
+    { label: "Avg Reply Time", value: "2.4s", icon: <Sparkles className="text-primary" size={16} /> }
+  ];
+
   return (
     <div className="space-y-8">
       <section className="glass-panel rounded-3xl p-8 border border-white/5">
@@ -45,6 +53,12 @@ function Home() {
             <span className="px-3 py-1 rounded-full bg-white/10 text-heading">tRPC + React 19</span>
           </div>
         </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-4">
+        {kpis.map((kpi) => (
+          <StatWidget key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} accent="primary" />
+        ))}
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">

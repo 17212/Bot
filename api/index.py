@@ -3,6 +3,8 @@ import asyncio
 from typing import Any, Dict, Optional
 
 import fastapi
+from fastapi import Query, HTTPException
+from fastapi.responses import PlainTextResponse
 import httpx
 import google.generativeai as genai
 
@@ -66,15 +68,16 @@ def extract_message_text(payload: Dict[str, Any]) -> Optional[Dict[str, str]]:
 
 
 @app.get("/webhook")
-async def verify_webhook(request: fastapi.Request):
-    params = request.query_params
-    mode = params.get("hub.mode")
-    token = params.get("hub.verify_token")
-    challenge = params.get("hub.challenge")
-
-    if mode == "subscribe" and token == FACEBOOK_VERIFY_TOKEN and challenge:
-        return fastapi.Response(content=challenge, media_type="text/plain")
-    return fastapi.Response(status_code=403, content="Forbidden")
+async def verify_webhook(
+    mode: str | None = Query(None, alias="hub.mode"),
+    token: str | None = Query(None, alias="hub.verify_token"),
+    challenge: str | None = Query(None, alias="hub.challenge"),
+):
+    if mode and token:
+        if mode == "subscribe" and token == FACEBOOK_VERIFY_TOKEN:
+            return PlainTextResponse(content=challenge or "", status_code=200)
+        raise HTTPException(status_code=403, detail="Verification token mismatch")
+    return PlainTextResponse(content="Hello, this is the IDRISIUM Webhook.", status_code=200)
 
 
 @app.post("/webhook")

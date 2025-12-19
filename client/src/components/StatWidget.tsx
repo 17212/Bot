@@ -1,7 +1,7 @@
-import { ReactNode } from "react";
+import type { FC, ReactNode } from "react";
 import clsx from "clsx";
 
-type StatWidgetProps = {
+export type StatWidgetProps = {
   label: string;
   value: string | number;
   icon?: ReactNode;
@@ -9,7 +9,7 @@ type StatWidgetProps = {
   hint?: string;
 };
 
-function StatWidget({ label, value, icon, accent = "neutral", hint }: StatWidgetProps) {
+const StatWidget: FC<StatWidgetProps> = ({ label, value, icon, accent = "neutral", hint }) => {
   return (
     <div
       className={clsx(
@@ -25,6 +25,6 @@ function StatWidget({ label, value, icon, accent = "neutral", hint }: StatWidget
       {hint ? <div className="text-xs text-body/60 mt-1">{hint}</div> : null}
     </div>
   );
-}
+};
 
 export default StatWidget;

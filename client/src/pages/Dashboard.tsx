@@ -1,11 +1,11 @@
-import { Activity, MessageCircle, FileText, Bell } from "lucide-react";
+import { Activity, MessageCircle, FileText, Bell, Clock3, Gauge, Sparkles } from "lucide-react";
 import StatWidget from "@/components/StatWidget";
 
 const stats = [
-  { label: "Total Posts", value: 128, icon: <FileText className="text-primary" size={18} />, accent: "primary" as const },
-  { label: "Comments", value: 4321, icon: <MessageCircle className="text-primary" size={18} />, hint: "+182 today" },
-  { label: "Messages", value: 987, icon: <Activity className="text-primary" size={18} />, hint: "12 pending" },
-  { label: "Alerts", value: 4, icon: <Bell className="text-primary" size={18} />, hint: "Retries active" }
+  { label: "Published Posts", value: 342, icon: <FileText className="text-primary" size={18} />, accent: "primary" as const, hint: "+8 today" },
+  { label: "Comments Replied", value: "9,842", icon: <MessageCircle className="text-primary" size={18} />, hint: "98 waiting" },
+  { label: "Messenger Threads", value: "1,324", icon: <Activity className="text-primary" size={18} />, hint: "24 active" },
+  { label: "Avg Reply Time", value: "2.4s", icon: <Clock3 className="text-primary" size={18} />, hint: "p95: 4.1s" }
 ];
 
 function Dashboard() {
@@ -28,10 +28,10 @@ function Dashboard() {
             <span className="text-xs text-body/70">Today</span>
           </div>
           <ul className="space-y-3 text-sm text-body">
-            <li>• Published 3 scheduled posts without retries.</li>
-            <li>• Auto-replied to 45 comments (Gemini: friendly).</li>
-            <li>• Messenger queue healthy; last response latency 1.6s.</li>
-            <li>• Webhook signature checks: 100% passed.</li>
+            <li>• Published 12 posts (8 scheduled, 4 instant) — 0 failures.</li>
+            <li>• Auto-replied to 320 comments (Gemini: friendly persona).</li>
+            <li>• Messenger queue healthy; last response latency 1.6s, p95 4.1s.</li>
+            <li>• Webhook signature checks: 100% passed (0 invalid).</li>
           </ul>
         </div>
 
@@ -56,6 +56,18 @@ function Dashboard() {
             <div className="flex items-center justify-between">
               <span>DB & Queue</span>
               <span className="px-2 py-1 rounded-lg bg-primary/15 text-primary font-semibold text-xs">Healthy</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Success rate</span>
+              <span className="px-2 py-1 rounded-lg bg-primary/15 text-primary font-semibold text-xs flex items-center gap-1">
+                <Gauge size={12} /> 99.3%
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>AI safety</span>
+              <span className="px-2 py-1 rounded-lg bg-primary/15 text-primary font-semibold text-xs flex items-center gap-1">
+                <Sparkles size={12} /> Clean
+              </span>
             </div>
           </div>
         </div>
