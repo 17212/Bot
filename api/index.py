@@ -31,7 +31,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("idrisium-not-human")
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-pro")
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-pro")
+model = genai.GenerativeModel(GEMINI_MODEL_NAME)
 
 app = FastAPI(
     title="IDRISIUM - Not Human Messenger Bot",
