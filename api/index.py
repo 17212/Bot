@@ -2,7 +2,8 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-import google.generativeai as genai
+import google.genai as genai
+from google.genai import types as genai_types
 import requests
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -30,9 +31,8 @@ PERSONA_SYSTEM_PROMPT = (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("idrisium-not-human")
 
-genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-pro")
-model = genai.GenerativeModel(GEMINI_MODEL_NAME)
 
 app = FastAPI(
     title="IDRISIUM - Not Human Messenger Bot",
@@ -72,18 +72,18 @@ def send_facebook_message(recipient_id: str, text: str) -> None:
 
 
 def generate_reply(user_text: str) -> str:
-    prompt = [
-        {"role": "system", "parts": [PERSONA_SYSTEM_PROMPT]},
-        {"role": "user", "parts": [user_text]},
-    ]
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.6,
-                "top_p": 0.9,
-                "max_output_tokens": 120,
-            },
+        response = client.models.generate_content(
+            model=GEMINI_MODEL_NAME,
+            contents=[
+                {"role": "system", "parts": [PERSONA_SYSTEM_PROMPT]},
+                {"role": "user", "parts": [user_text]},
+            ],
+            config=genai_types.GenerateContentConfig(
+                temperature=0.6,
+                top_p=0.9,
+                max_output_tokens=120,
+            ),
         )
         text = (response.text or "").strip()
         return text if text else "Mafi4 2alb. Error 404: كلام فايد؟"
