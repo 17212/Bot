@@ -1,9 +1,7 @@
-import { create } from "zustand";
-import type { Post } from "@/components/PostCard";
+import { create, type StateCreator } from "zustand";
+import type { Post, Recurrence } from "@/components/PostCard";
 import type { Comment } from "@/components/CommentCard";
 import type { Message } from "@/components/MessageCard";
-
-export type Recurrence = "none" | "daily" | "weekly" | "monthly";
 
 type BotStats = {
   postsPublished: number;
@@ -84,16 +82,16 @@ export const useBotStore = create<State>((set) => ({
     activeThreads: 24
   },
   settings: {
-    pageId: "",
-    accessToken: "",
-    verifyToken: "",
+    pageId: "61585004866552",
+    accessToken: "EAAKJ7U4lTB8BQKv1P0T3ZAJqFkHLDsl0ncS82ThSKFIezZAgKonbDq2o89GVcmNTj9KMJ5nrA1WbND7ObvyDnr7nTWwZAJ2qmOEc7MWTZBrJl9bee5kzk2ZC9EeSNSUym44uakenlgSdzRkPx2eowf6jenZAkJPnMgBlXVffOzY2fVy5VjGrHs4VtAJ6Ft",
+    verifyToken: "idrisium_not_human_2025_secret",
     systemPrompt: "You are 'Not Human', a sarcastic Egyptian Franco AI. Be brief, cold, and witty.",
     autoComments: true,
     autoMessages: true,
     language: "ar"
   },
-  addPost: ({ content, mode, scheduledAt, recurrence = "none" }) =>
-    set((state) => {
+  addPost: ({ content, mode, scheduledAt, recurrence = "none" }: { content: string; mode: "publish" | "schedule"; scheduledAt?: string; recurrence?: Recurrence }) =>
+    set((state: State) => {
       const id = `p-${Date.now()}`;
       const newPost: Post = {
         id,
@@ -109,12 +107,12 @@ export const useBotStore = create<State>((set) => ({
       }
       return { posts: [newPost, ...state.posts], stats };
     }),
-  setSystemPrompt: (prompt) =>
-    set((state) => ({ settings: { ...state.settings, systemPrompt: prompt } })),
-  updateSettings: (partial) =>
-    set((state) => ({ settings: { ...state.settings, ...partial } })),
-  setCommentStatus: (id, status, replyText) =>
-    set((state) => {
+  setSystemPrompt: (prompt: string) =>
+    set((state: State) => ({ settings: { ...state.settings, systemPrompt: prompt } })),
+  updateSettings: (partial: Partial<BotSettings>) =>
+    set((state: State) => ({ settings: { ...state.settings, ...partial } })),
+  setCommentStatus: (id: string, status: Comment["status"], replyText?: string) =>
+    set((state: State) => {
       const comments = state.comments.map((c) =>
         c.id === id ? { ...c, status, replyText, repliedAt: replyText ? "now" : c.repliedAt } : c
       );

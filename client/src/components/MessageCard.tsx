@@ -1,4 +1,6 @@
-type Message = {
+import type { FC } from "react";
+
+export type Message = {
   id: string;
   sender: string;
   text: string;
@@ -10,7 +12,7 @@ type MessageCardProps = {
   message: Message;
 };
 
-function MessageCard({ message }: MessageCardProps) {
+const MessageCard: FC<MessageCardProps> = ({ message }) => {
   const isInbound = message.direction === "inbound";
   return (
     <div className="glass-panel rounded-2xl p-4 border border-white/8 flex flex-col gap-2">
