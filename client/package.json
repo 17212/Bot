@@ -19,7 +19,7 @@
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
     "framer-motion": "^11.2.10",
-    "lucide-react": "^0.450.0",
+    "lucide-react": "^0.344.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^6.28.0",
