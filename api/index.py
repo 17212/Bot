@@ -170,16 +170,20 @@ async def webhook(request: Request) -> JSONResponse:
     except Exception:  # noqa: BLE001
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
+    logger.info("Webhook received: keys=%s", list(body.keys()))
     entries = body.get("entry", [])
     for entry in entries:
         page_id = entry.get("id")
+        logger.info("Entry page_id=%s keys=%s", page_id, list(entry.keys()))
         messaging_events = entry.get("messaging", [])
         for event in messaging_events:
+            logger.info("Messaging event keys=%s", list(event.keys()))
             handle_message_event(event, page_id)
 
         changes = entry.get("changes", [])
         for change in changes:
             if change.get("field") == "feed":
+                logger.info("Feed change keys=%s", list(change.keys()))
                 handle_feed_change(change, page_id)
 
     return JSONResponse({"status": "ok"})
