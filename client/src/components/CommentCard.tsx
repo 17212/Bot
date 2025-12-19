@@ -1,7 +1,8 @@
+import type { FC } from "react";
 import { CheckCircle2, MessageCircle, SmilePlus, XCircle } from "lucide-react";
 import clsx from "clsx";
 
-type Comment = {
+export type Comment = {
   id: string;
   author: string;
   message: string;
@@ -10,13 +11,13 @@ type Comment = {
   replyText?: string;
 };
 
-type CommentCardProps = {
+export type CommentCardProps = {
   comment: Comment;
   onApprove?: (id: string) => void;
   onIgnore?: (id: string) => void;
 };
 
-function CommentCard({ comment, onApprove, onIgnore }: CommentCardProps) {
+const CommentCard: FC<CommentCardProps> = ({ comment, onApprove, onIgnore }) => {
   const statusColor = {
     new: "bg-primary/15 text-primary",
     replied: "bg-emerald-500/20 text-emerald-200",
@@ -66,6 +67,6 @@ function CommentCard({ comment, onApprove, onIgnore }: CommentCardProps) {
       ) : null}
     </div>
   );
-}
+};
 
 export default CommentCard;

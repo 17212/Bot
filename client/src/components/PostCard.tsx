@@ -1,7 +1,8 @@
+import type { FC } from "react";
 import { CalendarClock, Send, Repeat, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 
-type Post = {
+export type Post = {
   id: string;
   content: string;
   status: "draft" | "scheduled" | "published" | "failed";
@@ -9,11 +10,11 @@ type Post = {
   stats?: { likes: number; comments: number; shares: number };
 };
 
-type PostCardProps = {
+export type PostCardProps = {
   post: Post;
 };
 
-function PostCard({ post }: PostCardProps) {
+const PostCard: FC<PostCardProps> = ({ post }) => {
   const statusColor = {
     draft: "bg-white/10 text-body",
     scheduled: "bg-primary/15 text-primary",
@@ -48,6 +49,6 @@ function PostCard({ post }: PostCardProps) {
       </div>
     </div>
   );
-}
+};
 
 export default PostCard;
