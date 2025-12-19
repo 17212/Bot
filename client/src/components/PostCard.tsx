@@ -2,11 +2,14 @@ import type { FC } from "react";
 import { CalendarClock, Send, Repeat, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 
+export type Recurrence = "none" | "daily" | "weekly" | "monthly";
+
 export type Post = {
   id: string;
   content: string;
   status: "draft" | "scheduled" | "published" | "failed";
   scheduledAt?: string;
+  recurrence?: Recurrence;
   stats?: { likes: number; comments: number; shares: number };
 };
 
