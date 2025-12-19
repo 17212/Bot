@@ -68,7 +68,7 @@ const seedMessages: Message[] = [
   { id: "m2", sender: "Bot", text: "Hi, what's up?", direction: "outbound", time: "09:31" }
 ];
 
-export const useBotStore = create<State>((set) => ({
+export const useBotStore = create<State>(((set: StateCreator<State>) => ({
   posts: seedPosts,
   comments: seedComments,
   messages: seedMessages,
@@ -98,7 +98,7 @@ export const useBotStore = create<State>((set) => ({
         content,
         status: mode === "publish" ? "published" : "scheduled",
         scheduledAt: mode === "schedule" ? scheduledAt || "Soon" : undefined,
-        recurrence: mode === "schedule" ? recurrence : undefined,
+        recurrence: mode === "schedule" ? (recurrence as Recurrence) : undefined,
         stats: { likes: 0, comments: 0, shares: 0 }
       };
       const stats = { ...state.stats };
@@ -125,4 +125,4 @@ export const useBotStore = create<State>((set) => ({
       }
       return { comments, stats };
     })
-}));
+})) as StateCreator<State>);

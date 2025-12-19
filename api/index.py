@@ -80,6 +80,16 @@ async def verify_webhook(
     return PlainTextResponse(content="Hello, this is the IDRISIUM Webhook.", status_code=200)
 
 
+# Mirror path under /api/webhook for flexibility with hosting/platform rewrites
+@app.get("/api/webhook")
+async def verify_webhook_api(
+    mode: str | None = Query(None, alias="hub.mode"),
+    token: str | None = Query(None, alias="hub.verify_token"),
+    challenge: str | None = Query(None, alias="hub.challenge"),
+):
+    return await verify_webhook(mode=mode, token=token, challenge=challenge)
+
+
 @app.post("/webhook")
 async def webhook(payload: Dict[str, Any]):
     msg = extract_message_text(payload)
