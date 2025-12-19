@@ -1,10 +1,10 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/index.py", "use": "@vercel/python", "config": { "runtime": "python3.11" } }
+    { "src": "backend/api/index.py", "use": "@vercel/python", "config": { "runtime": "python3.11" } }
   ],
   "routes": [
-    { "src": "/webhook", "dest": "/api/index.py" },
-    { "src": "/api/(.*)", "dest": "/api/index.py" }
+    { "src": "/webhook", "dest": "/backend/api/index.py" },
+    { "src": "/api/(.*)", "dest": "/backend/api/index.py" }
   ]
 }
