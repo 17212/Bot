@@ -36,7 +36,7 @@ model = genai.GenerativeModel(GEMINI_MODEL_NAME)
 
 app = FastAPI(
     title="IDRISIUM - Not Human Messenger Bot",
-    description="FastAPI backend for Facebook Messenger with Gemini 1.5 Pro.",
+    description="FastAPI backend for Facebook Messenger with Gemini 2.5 Pro.",
     version="1.0.0",
 )
 
