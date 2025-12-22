@@ -27,7 +27,7 @@ async def generate_content(prompt: str, config: dict) -> str:
         return "🚨 Error: No API Keys configured!"
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash') # Or gemini-1.5-flash if 2.0 not available
+    model = genai.GenerativeModel('gemini-2.5-flash') # Or gemini-1.5-flash if 2.0 not available
 
     try:
         response = await model.generate_content_async(prompt)
