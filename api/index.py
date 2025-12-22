@@ -24,8 +24,17 @@ from api.features.tools import (
     base64enc_command, base64dec_command, hexenc_command, hexdec_command, bin_command, uuid_command, password_command,
     calc_command, time_command, date_command, ascii_command
 )
+from api.features.utilities import summarize_text, translate_text, roast_user
 
-# ... (Previous imports)
+# --- Configuration ---
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+if not TELEGRAM_TOKEN:
+    TELEGRAM_TOKEN = "8562761946:AAH0yaZq82IZgEewsDVmsijOyf2WJanUuPY"
+
+app = FastAPI()
 
 # --- AI Feature Handlers ---
 async def define_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
