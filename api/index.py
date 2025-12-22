@@ -72,6 +72,60 @@ async def story_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = await generate_content(f"Write a very short story about {topic}.", config)
     await update.message.reply_text(res)
 
+# --- Feature Handlers ---
+
+async def persona_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /persona [name]")
+        return
+    name = context.args[0]
+    if set_persona(name):
+        await update.message.reply_text(f"🎭 Persona switched to: **{name.capitalize()}**", parse_mode='Markdown')
+    else:
+        await update.message.reply_text("❌ Persona not found. Use /personas to list.")
+
+async def personas_list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    personas = get_available_personas()
+    await update.message.reply_text(f"🎭 **Available Personas:**\n" + "\n".join([f"- {p}" for p in personas]), parse_mode='Markdown')
+
+async def rank_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📊 XP System Active. Keep chatting to level up! Check /top")
+
+async def top_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    leaders = get_leaderboard()
+    text = "🏆 **Leaderboard**\n\n"
+    for i, user in enumerate(leaders):
+        name = user.get('first_name', 'Unknown')
+        level = user.get('level', 1)
+        xp = user.get('xp', 0)
+        text += f"{i+1}. {name} - Lvl {level} ({xp} XP)\n"
+    await update.message.reply_text(text, parse_mode='Markdown')
+
+async def roast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    target = " ".join(context.args) if context.args else update.effective_user.first_name
+    roast = await roast_user(target, config)
+    await update.message.reply_text(roast)
+
+async def summarize_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if not context.args:
+        await update.message.reply_text("Usage: /summarize [text]")
+        return
+    text = " ".join(context.args)
+    summary = await summarize_text(text, config)
+    await update.message.reply_text(f"📝 **Summary:**\n{summary}", parse_mode='Markdown')
+
+async def translate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /tr [lang] [text]")
+        return
+    lang = context.args[0]
+    text = " ".join(context.args[1:])
+    translation = await translate_text(text, lang, config)
+    await update.message.reply_text(f"🌐 **Translation ({lang}):**\n{translation}", parse_mode='Markdown')
+
 # --- Existing Handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
