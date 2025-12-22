@@ -36,7 +36,7 @@ async def generate_content(prompt: str, config: dict, history: list = [], image_
         return "🚨 Error: No API Keys configured!"
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash-exp') # Updated to latest experimental
+    model = genai.GenerativeModel('gemini-2.5-flash') # Updated to latest experimental
 
     try:
         inputs = []
@@ -71,7 +71,7 @@ async def generate_content(prompt: str, config: dict, history: list = [], image_
         if new_key:
              logger.info("Rotated API Key due to error. Retrying...")
              genai.configure(api_key=new_key)
-             model = genai.GenerativeModel('gemini-2.0-flash-exp')
+             model = genai.GenerativeModel('gemini-2.5-flash')
              try:
                  # Retry logic needs to duplicate the setup
                  chat = model.start_chat(history=history)
