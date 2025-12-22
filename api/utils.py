@@ -85,3 +85,66 @@ def rotate_api_key() -> Optional[str]:
     update_bot_config({"current_key_index": next_idx})
     
     return keys[next_idx]
+
+# --- Chat History Management ---
+def add_message_to_history(user_id: int, role: str, content: str):
+    """Adds a message to the user's chat history in Firestore."""
+    db = get_firestore_db()
+    # Subcollection 'history' under the user document
+    db.collection("users").document(str(user_id)).collection("history").add({
+        "role": role,
+        "parts": [content],
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
+
+def get_chat_history(user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    """Retrieves the last N messages from the user's chat history."""
+    db = get_firestore_db()
+    history_ref = db.collection("users").document(str(user_id)).collection("history")
+    
+    # Get last N messages ordered by timestamp
+    docs = history_ref.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit).stream()
+    
+    history = []
+    for doc in docs:
+        data = doc.to_dict()
+        # Convert to Gemini format
+        history.append({
+            "role": data["role"],
+            "parts": data["parts"]
+        })
+    
+    return history[::-1] # Reverse to get chronological order
+
+# --- User Tracking ---
+def log_user(user: Any):
+    """Logs or updates user information in Firestore."""
+    db = get_firestore_db()
+    user_ref = db.collection("users").document(str(user.id))
+    
+    user_data = {
+        "id": user.id,
+        "first_name": user.first_name,
+        "username": user.username,
+        "last_seen": firestore.SERVER_TIMESTAMP
+    }
+    
+    # Set with merge=True to update existing fields or create new doc
+    user_ref.set(user_data, merge=True)
+
+def get_all_users() -> List[Dict[str, Any]]:
+    """Retrieves all registered users."""
+    db = get_firestore_db()
+    users = db.collection("users").stream()
+    return [u.to_dict() for u in users]
+
+def get_bot_stats() -> Dict[str, Any]:
+    """Returns basic stats about the bot."""
+    db = get_firestore_db()
+    # Count users (this can be expensive for large collections, but fine for now)
+    users_coll = db.collection("users")
+    user_count = len(list(users_coll.list_documents())) # list_documents is lighter than getting all data
+    
+    return {
+        "user_count": user_count
+    }

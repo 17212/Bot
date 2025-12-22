@@ -6,7 +6,13 @@ from fastapi import FastAPI, Request, BackgroundTasks
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import google.generativeai as genai
-from api.utils import get_bot_config, update_bot_config, get_current_api_key, rotate_api_key
+from api.utils import (
+    get_bot_config, update_bot_config, get_current_api_key, rotate_api_key,
+    add_message_to_history, get_chat_history, log_user, get_bot_stats, get_all_users
+)
+import PIL.Image
+import io
+import aiohttp
 
 # --- Configuration ---
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -20,17 +26,41 @@ if not TELEGRAM_TOKEN:
 app = FastAPI()
 
 # --- Gemini Helper ---
-async def generate_content(prompt: str, config: dict) -> str:
-    """Generates content using Gemini, handling key rotation."""
+# --- Gemini Helper ---
+async def generate_content(prompt: str, config: dict, history: list = [], image_data: bytes = None) -> str:
+    """Generates content using Gemini, handling key rotation, history, and images."""
     api_key = get_current_api_key()
     if not api_key:
         return "🚨 Error: No API Keys configured!"
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash') # Or gemini-1.5-flash if 2.0 not available
+    model = genai.GenerativeModel('gemini-2.0-flash-exp') # Updated to latest experimental
 
     try:
-        response = await model.generate_content_async(prompt)
+        inputs = []
+        # Add system prompt if history is empty or just as context (Gemini handles system instructions differently now, but prepending is fine)
+        if not history:
+             inputs.append(config.get('system_prompt', ''))
+        
+        # Add History
+        for msg in history:
+            inputs.append(msg) # msg is already {"role": ..., "parts": ...} but Gemini client wants Content objects or list of parts. 
+                               # Actually, model.generate_content accepts a list of contents.
+                               # But here we are doing single turn with context manually or using chat session.
+                               # Let's stick to simple generation with context for now to avoid session state issues in serverless.
+                               # Wait, passing history as list of dicts to generate_content might not work directly as 'contents'.
+                               # Better to format history into the prompt or use start_chat.
+                               # For Vercel (stateless), we reconstruct the chat.
+        
+        # Reconstruct chat for context
+        chat = model.start_chat(history=history)
+        
+        message_parts = [prompt]
+        if image_data:
+            image = PIL.Image.open(io.BytesIO(image_data))
+            message_parts.append(image)
+
+        response = await chat.send_message_async(message_parts)
         return response.text
     except Exception as e:
         logger.error(f"Gemini Error: {e}")
@@ -39,8 +69,15 @@ async def generate_content(prompt: str, config: dict) -> str:
         if new_key:
              logger.info("Rotated API Key due to error. Retrying...")
              genai.configure(api_key=new_key)
+             model = genai.GenerativeModel('gemini-2.0-flash-exp')
              try:
-                 response = await model.generate_content_async(prompt)
+                 # Retry logic needs to duplicate the setup
+                 chat = model.start_chat(history=history)
+                 message_parts = [prompt]
+                 if image_data:
+                    image = PIL.Image.open(io.BytesIO(image_data))
+                    message_parts.append(image)
+                 response = await chat.send_message_async(message_parts)
                  return response.text
              except Exception as e2:
                  return f"🚨 Error after rotation: {e2}"
@@ -137,18 +174,69 @@ async def set_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     update_bot_config({'custom_topics': topics})
     await update.message.reply_text(f"📝 Custom Topics: {', '.join(topics)}")
 
-async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']:
+        return
+    
+    stats = get_bot_stats()
+    await update.message.reply_text(f"📊 **Bot Stats**\nUsers: {stats.get('user_count', 0)}", parse_mode='Markdown')
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     config = get_bot_config()
     if update.effective_user.id != config['admin_id']:
         return
 
-    user_message = update.message.text
-    system_prompt = config.get('system_prompt', '')
+    if not context.args:
+        await update.message.reply_text("Usage: /broadcast [Message]")
+        return
+
+    message = " ".join(context.args)
+    users = get_all_users()
+    count = 0
+    for user in users:
+        try:
+            await context.bot.send_message(chat_id=user['id'], text=f"📢 **Broadcast**\n\n{message}", parse_mode='Markdown')
+            count += 1
+        except Exception:
+            pass # Ignore blocked users
     
-    full_prompt = f"{system_prompt}\n\nUser: {user_message}\nEntropy 72:"
+    await update.message.reply_text(f"✅ Broadcast sent to {count} users.")
+
+async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    log_user(user) # Track user
     
-    response = await generate_content(full_prompt, config)
-    await update.message.reply_text(response)
+    config = get_bot_config()
+    
+    user_message = ""
+    image_data = None
+    
+    if update.message.text:
+        user_message = update.message.text
+    elif update.message.caption:
+        user_message = update.message.caption
+
+    if update.message.photo:
+        # Get largest photo
+        photo_file = await update.message.photo[-1].get_file()
+        image_bytes = await photo_file.download_as_bytearray()
+        image_data = bytes(image_bytes)
+    
+    if not user_message and not image_data:
+        return # Ignore non-text/non-image messages for now
+
+    # Get History
+    history = get_chat_history(user.id, limit=10)
+    
+    # Generate
+    response_text = await generate_content(user_message, config, history, image_data)
+    
+    # Save to History
+    add_message_to_history(user.id, "user", user_message or "[Image]")
+    add_message_to_history(user.id, "model", response_text)
+    
+    await update.message.reply_text(response_text)
 
 # --- Application Builder ---
 # We build the application globally to reuse it if possible, but for Vercel it's per request usually.
@@ -163,7 +251,9 @@ application.add_handler(CommandHandler("setprompt", set_prompt))
 application.add_handler(CommandHandler("getprompt", get_prompt))
 application.add_handler(CommandHandler("mode", set_mode))
 application.add_handler(CommandHandler("settopics", set_topics))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_handler))
+application.add_handler(CommandHandler("stats", stats_command))
+application.add_handler(CommandHandler("broadcast", broadcast_command))
+application.add_handler(MessageHandler(filters.TEXT | filters.PHOTO & ~filters.COMMAND, chat_handler))
 
 
 # --- Routes ---
