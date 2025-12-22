@@ -72,7 +72,138 @@ async def story_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = await generate_content(f"Write a very short story about {topic}.", config)
     await update.message.reply_text(res)
 
-# ... (Existing Handlers)
+# --- Existing Handlers ---
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Entropy 72 Online. Waiting for chaos.\nType /help for commands.")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = """
+    **Entropy 72 Mega Commands:**
+    
+    **🤖 Core**
+    /panel - Admin Panel (UI)
+    /mode [default/custom] - Switch Mode
+    
+    **🎭 Personas**
+    /persona [name] - Switch Personality
+    /personas - List available personas
+    
+    **🎮 Fun & XP**
+    /rank - Check your Level
+    /top - Leaderboard
+    /roast [name] - Roast someone
+    
+    **🛠 Utilities**
+    /summarize [text] - Summarize text
+    /tr [lang] [text] - Translate text
+    
+    **⚙️ Admin**
+    /addkey, /switchkey, /setprompt, /broadcast
+    """
+    await update.message.reply_text(help_text, parse_mode='Markdown')
+
+async def add_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    if not context.args: return
+    new_key = context.args[0]
+    keys = config.get('api_keys', [])
+    if new_key not in keys:
+        keys.append(new_key)
+        update_bot_config({'api_keys': keys})
+        await update.message.reply_text("✅ Key added.")
+
+async def switch_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    rotate_api_key()
+    await update.message.reply_text("🔄 Key Rotated.")
+
+async def set_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    if not context.args: return
+    update_bot_config({'system_prompt': " ".join(context.args)})
+    await update.message.reply_text("🧠 Prompt Updated.")
+
+async def get_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    await update.message.reply_text(f"`{config.get('system_prompt')}`", parse_mode='Markdown')
+
+async def set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    if not context.args: return
+    update_bot_config({'mode': context.args[0]})
+    await update.message.reply_text(f"⚙️ Mode: {context.args[0]}")
+
+async def set_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    update_bot_config({'custom_topics': list(context.args)})
+    await update.message.reply_text("📝 Topics Updated.")
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    stats = get_bot_stats()
+    await update.message.reply_text(f"📊 Users: {stats.get('user_count', 0)}")
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    if not context.args: return
+    message = " ".join(context.args)
+    users = get_all_users()
+    for user in users:
+        try: await context.bot.send_message(chat_id=user['id'], text=f"📢 {message}")
+        except: pass
+    await update.message.reply_text("✅ Broadcast sent.")
+
+async def panel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']: return
+    await update.message.reply_text("🎛 **Admin Panel**", reply_markup=get_main_menu_keyboard(), parse_mode='Markdown')
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    if data == 'main_menu': await query.edit_message_text("🎛 **Admin Panel**", reply_markup=get_main_menu_keyboard(), parse_mode='Markdown')
+    elif data == 'menu_stats': await query.edit_message_text(f"📊 Users: {get_bot_stats().get('user_count', 0)}", reply_markup=get_main_menu_keyboard())
+    elif data == 'menu_settings': await query.edit_message_text("⚙️ **Settings**", reply_markup=get_settings_keyboard(), parse_mode='Markdown')
+    elif data == 'menu_keys': await query.edit_message_text("🔑 **Keys**", reply_markup=get_keys_keyboard(), parse_mode='Markdown')
+    elif data == 'close_panel': await query.delete_message()
+
+async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    log_user(user)
+    
+    # XP System
+    leveled_up, new_level = add_xp(user.id)
+    if leveled_up:
+        await update.message.reply_text(f"🎉 **LEVEL UP!**\nYou are now Level {new_level}!", parse_mode='Markdown')
+
+    config = get_bot_config()
+    user_message = update.message.text or update.message.caption or ""
+    image_data = None
+
+    if update.message.photo:
+        photo_file = await update.message.photo[-1].get_file()
+        image_bytes = await photo_file.download_as_bytearray()
+        image_data = bytes(image_bytes)
+    
+    if not user_message and not image_data: return
+
+    history = get_chat_history(user.id, limit=10)
+    response_text = await generate_content(user_message, config, history, image_data)
+    
+    add_message_to_history(user.id, "user", user_message or "[Image]")
+    add_message_to_history(user.id, "model", response_text)
+    
+    await update.message.reply_text(response_text)
 
 # --- App Builder ---
 application = Application.builder().token(TELEGRAM_TOKEN).build()
