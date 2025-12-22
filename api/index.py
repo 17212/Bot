@@ -4,12 +4,14 @@ import random
 import asyncio
 from fastapi import FastAPI, Request, BackgroundTasks
 from telegram import Update, Bot
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 import google.generativeai as genai
 from api.utils import (
     get_bot_config, update_bot_config, get_current_api_key, rotate_api_key,
     add_message_to_history, get_chat_history, log_user, get_bot_stats, get_all_users
 )
+from api.keyboards import get_main_menu_keyboard, get_settings_keyboard, get_keys_keyboard
+from telegram import CallbackQuery
 import PIL.Image
 import io
 import aiohttp
@@ -203,6 +205,53 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(f"✅ Broadcast sent to {count} users.")
 
+async def panel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config = get_bot_config()
+    if update.effective_user.id != config['admin_id']:
+        return
+    
+    await update.message.reply_text("🎛 **Admin Panel**", reply_markup=get_main_menu_keyboard(), parse_mode='Markdown')
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer() # Acknowledge click
+    
+    data = query.data
+    config = get_bot_config()
+    
+    if data == 'main_menu':
+        await query.edit_message_text("🎛 **Admin Panel**", reply_markup=get_main_menu_keyboard(), parse_mode='Markdown')
+        
+    elif data == 'menu_stats':
+        stats = get_bot_stats()
+        text = f"📊 **Bot Stats**\nUsers: {stats.get('user_count', 0)}"
+        # Add back button
+        await query.edit_message_text(text, reply_markup=get_main_menu_keyboard(), parse_mode='Markdown') # Or separate back button
+        
+    elif data == 'menu_settings':
+        await query.edit_message_text("⚙️ **Settings**", reply_markup=get_settings_keyboard(), parse_mode='Markdown')
+        
+    elif data == 'menu_keys':
+        await query.edit_message_text("🔑 **API Keys Management**", reply_markup=get_keys_keyboard(), parse_mode='Markdown')
+        
+    elif data == 'toggle_mode':
+        current_mode = config.get('mode', 'default')
+        new_mode = 'custom' if current_mode == 'default' else 'default'
+        update_bot_config({'mode': new_mode})
+        await query.edit_message_text("⚙️ **Settings**", reply_markup=get_settings_keyboard(), parse_mode='Markdown')
+        
+    elif data == 'rotate_key':
+        new_key = rotate_api_key()
+        text = "🔄 Key Rotated!" if new_key else "❌ No keys to rotate."
+        await query.answer(text, show_alert=True)
+        await query.edit_message_text("🔑 **API Keys Management**", reply_markup=get_keys_keyboard(), parse_mode='Markdown')
+
+    elif data == 'close_panel':
+        await query.delete_message()
+        
+    elif data in ['menu_broadcast', 'edit_prompt', 'edit_topics', 'add_key_prompt']:
+        await query.answer("⚠️ Use the command for this feature (e.g. /broadcast)", show_alert=True)
+
 async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     log_user(user) # Track user
@@ -253,6 +302,8 @@ application.add_handler(CommandHandler("mode", set_mode))
 application.add_handler(CommandHandler("settopics", set_topics))
 application.add_handler(CommandHandler("stats", stats_command))
 application.add_handler(CommandHandler("broadcast", broadcast_command))
+application.add_handler(CommandHandler("panel", panel_command))
+application.add_handler(CallbackQueryHandler(button_handler))
 application.add_handler(MessageHandler(filters.TEXT | filters.PHOTO & ~filters.COMMAND, chat_handler))
 
 
